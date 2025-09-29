@@ -20,17 +20,32 @@ if uploaded_file is not None:
         input_path = tmp.name
 
     st.success("✅ PDF uploaded successfully!")
-
+    
     # Run summarization
-    if st.button("Summarize PDF"):
+    if st.button("Summarize PDF", type="primary"):
         with st.spinner("Summarizing with Gemini... this may take a minute ⏳"):
-            output_path = os.path.join(tempfile.gettempdir(), "summarized_report.pdf")
-            run(input_path, output_path)
+            output_pdf_path = os.path.join(tempfile.gettempdir(), "summarized_report.pdf")
+            
+            # Generate formatted PDF and get text for preview
+            pdf_path, text_preview = run(input_path, output_pdf_path)
 
         st.success("🎉 Summarization complete!")
+        
+        # Single download button for formatted PDF report
         st.download_button(
-            label="⬇️ Download Summarized Report",
-            data=open(output_path, "rb").read(),
+            label="📄 Download Summary Report (PDF)",
+            data=open(pdf_path, "rb").read(),
             file_name="summarized_report.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            use_container_width=True
         )
+        
+        # Preview section
+        st.markdown("---")
+        st.subheader("📋 Preview")
+        
+        # Show first 2000 characters
+        preview = text_preview[:2000]
+        if len(text_preview) > 2000:
+            preview += "\n\n... (truncated, download PDF report to see complete summary)"
+        st.text_area("Summary Preview", preview, height=400)

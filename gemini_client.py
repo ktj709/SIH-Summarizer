@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 class GeminiClient:
-    def __init__(self, model: str = "gemini-1.5-flash"):
+    def __init__(self, model: str = "gemini-2.0-flash"):
         # Load variables from .env file
         load_dotenv()
 
