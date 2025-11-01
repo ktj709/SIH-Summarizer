@@ -185,7 +185,7 @@ def run(pdf_path: str, out_pdf: str = "pdf_summary_report.pdf"):
     # Generate summaries with text report for preview
     summaries, formatted_report = summarize_pdf_pages(
         pages, 
-        model="gemini-1.5-flash",
+        model="gemini-2.0-flash",
         create_report=True,
         source_file=pdf_path
     )
