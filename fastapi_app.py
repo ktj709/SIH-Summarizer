@@ -2,17 +2,28 @@
 import os
 import tempfile
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
-
-# import your pipeline runner
+from typing import Optional
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
 from summarizer import summarize_json_input
+
+# Load environment variables
+load_dotenv()
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 
 app = FastAPI(
     title="JSON Summarizer API",
-    description="Submit data in JSON format and get a summarized PDF.",
+    description="Submit data in JSON format and get a summarized PDF uploaded to Cloudinary.",
     version="1.0.0"
 )
 
@@ -56,7 +67,7 @@ async def root():
 @app.post("/summarize")
 async def summarize_json(input_data: JSONInput):
     """
-    Submit JSON data and receive a summarized PDF in return.
+    Submit JSON data and receive a Cloudinary URL with the summarized PDF.
     
     Expected JSON format:
     {
@@ -66,6 +77,14 @@ async def summarize_json(input_data: JSONInput):
             "author": "Optional author name",
             "source": "Optional source file name"
         }
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "cloudinary_url": "https://res.cloudinary.com/...",
+        "public_id": "...",
+        "message": "PDF successfully uploaded to Cloudinary"
     }
     """
     if not input_data.content.strip():
@@ -83,15 +102,31 @@ async def summarize_json(input_data: JSONInput):
             json_dict["metadata"] = input_data.metadata.dict(exclude_none=True)
         
         # Run your summarization pipeline
-        # summarize_json_input() returns (pdf_path, text_preview)
         pdf_path, _ = summarize_json_input(json_dict, tmp_output_path)
         
-        # Return summarized file
-        return FileResponse(
-            path=pdf_path,
-            filename="json_summary.pdf",
-            media_type="application/pdf",
-            background=None  # Don't delete immediately
+        # Upload PDF to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            pdf_path,
+            resource_type="raw",
+            folder="summaries",
+            public_id=f"summary_{os.path.basename(pdf_path).replace('.pdf', '')}"
+        )
+        
+        # Clean up temporary file
+        if os.path.exists(tmp_output_path):
+            os.remove(tmp_output_path)
+        
+        # Return Cloudinary URL and metadata
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "cloudinary_url": upload_result["secure_url"],
+                "public_id": upload_result["public_id"],
+                "format": upload_result["format"],
+                "bytes": upload_result["bytes"],
+                "message": "PDF successfully uploaded to Cloudinary"
+            }
         )
     
     except Exception as e:
@@ -105,7 +140,7 @@ async def health_check():
     """Detailed health check endpoint."""
     return {
         "status": "healthy",
-        "service": "Text Summarizer API",
+        "service": "PDF Summarizer API",
         "version": "1.0.0"
     }
 
@@ -120,7 +155,7 @@ async def cleanup_temp_files():
     cleaned = 0
     try:
         for filename in os.listdir(temp_dir):
-            if filename.endswith("_summary.pdf") or filename == "summary_output.pdf":
+            if filename.endswith("_summary.pdf") or (filename.startswith("tmp") and filename.endswith(".pdf")):
                 filepath = os.path.join(temp_dir, filename)
                 try:
                     os.remove(filepath)

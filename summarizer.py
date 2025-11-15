@@ -172,7 +172,7 @@ def create_formatted_report(summaries: list, source_file: str = "document.pdf") 
     
     return '\n'.join(lines)
 
-def summarize_pdf_pages(page_records: list, model="gemini-1.5-flash", 
+def summarize_pdf_pages(page_records: list, model="gemini-2.0-flash", 
                         create_report: bool = False, source_file: str = "document.pdf"):
     """
     Summarize PDF pages with optional formatted text report.
@@ -257,48 +257,6 @@ def summarize_pdf_pages(page_records: list, model="gemini-1.5-flash",
         return outputs, formatted_report
     
     return outputs
-
-def summarize_text_input(text: str, output_pdf_path: str, model="gemini-2.0-flash"):
-    """
-    Summarize text input and generate a formatted PDF report.
-    
-    Args:
-        text: Input text to summarize
-        output_pdf_path: Path where the output PDF will be saved
-        model: Gemini model to use
-    
-    Returns:
-        tuple: (pdf_path, formatted_report_text)
-    """
-    from main import write_formatted_summary_pdf
-    
-    # Chunk the text if necessary
-    text_summary = ""
-    if text.strip():
-        chunks = chunk_text(text)
-        chunk_summaries = []
-        for c in tqdm(chunks, desc="Summarizing text"):
-            s = client.summarize_text(c)
-            chunk_summaries.append(s.strip())
-        text_summary = "\n\n".join(chunk_summaries)
-    
-    # Create a summary record (simulating page 1)
-    summary_record = {
-        "page_no": 1,
-        "text_summary": text_summary,
-        "image_summaries": [],  # No images from text input
-        "combined_short": text_summary.split('\n')[0][:100] if text_summary else "Text Summary"
-    }
-    
-    summaries = [summary_record]
-    
-    # Create formatted text report
-    formatted_report = create_formatted_report(summaries, source_file="text_input.txt")
-    
-    # Generate formatted PDF report
-    write_formatted_summary_pdf(summaries, output_path=output_pdf_path, source_filename="text_input.txt")
-    
-    return output_pdf_path, formatted_report
 
 def summarize_json_input(json_data: dict, output_pdf_path: str, model="gemini-2.0-flash"):
     """
