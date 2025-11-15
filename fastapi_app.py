@@ -123,14 +123,17 @@ async def summarize_json(input_data: JSONInput):
                 "success": True,
                 "cloudinary_url": upload_result["secure_url"],
                 "public_id": upload_result["public_id"],
-                "format": upload_result["format"],
-                "bytes": upload_result["bytes"],
+                "resource_type": upload_result.get("resource_type", "raw"),
+                "bytes": upload_result.get("bytes", 0),
                 "message": "PDF successfully uploaded to Cloudinary"
             }
         )
     
     except Exception as e:
         # Clean up on error
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error occurred: {error_details}")
         if tmp_output_path and os.path.exists(tmp_output_path):
             os.remove(tmp_output_path)
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
